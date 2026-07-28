@@ -89,13 +89,45 @@ export class Kohera {
     }
 
     getDeepLink(platform, link) {
-        // Native deep linking (custom URI scheme) is not yet configured.
-        // Web deep linking to specific rooms/users is planned but not yet
-        // implemented in the router's initial redirect logic.
+        // Desktop platforms use the standard matrix: URI scheme.
+        // The app registers as a handler via:
+        //   - Linux:  MimeType=x-scheme-handler/matrix in the .desktop file
+        //   - Windows: protocol handler in the registry (Inno Setup)
+        //   - macOS:  CFBundleURLTypes in Info.plist
+        if (platform === Platform.Linux || platform === Platform.Windows || platform === Platform.macOS) {
+            let identifier = encodeURIComponent(link.identifier.substring(1));
+            let isRoomid = link.identifier.substring(0, 1) === '!';
+            let fragmentPath;
+            switch (link.kind) {
+                case LinkKind.User:
+                    fragmentPath = `u/${identifier}?action=chat`;
+                    break;
+                case LinkKind.Room:
+                case LinkKind.Event:
+                    if (isRoomid)
+                        fragmentPath = `roomid/${identifier}`;
+                    else
+                        fragmentPath = `r/${identifier}`;
+
+                    if (link.kind === LinkKind.Event)
+                        fragmentPath += `/e/${encodeURIComponent(link.eventId.substring(1))}`;
+                    fragmentPath += '?action=join';
+                    fragmentPath += link.servers.map(server => `&via=${encodeURIComponent(server)}`).join('');
+                    break;
+                case LinkKind.Group:
+                    return;
+            }
+            return `matrix:${fragmentPath}`;
+        }
+        // iOS and Android use a custom app-specific URI scheme to avoid
+        // conflicts with other Matrix clients on mobile.
+        if (platform === Platform.iOS || platform === Platform.Android) {
+            return `io.github.quantumheart.kohera://chat/${link.identifier}`;
+        }
     }
 
     canInterceptMatrixToLinks(platform) {
-        return false;
+        return platform === Platform.Android;
     }
 
     getPreferredWebInstance(link) {}
