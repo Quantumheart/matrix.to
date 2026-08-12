@@ -122,7 +122,7 @@ export class Kohera {
         // iOS and Android use a custom app-specific URI scheme to avoid
         // conflicts with other Matrix clients on mobile.
         if (platform === Platform.iOS || platform === Platform.Android) {
-            return `io.github.quantumheart.kohera://chat/${link.identifier}`;
+            return `io.github.quantumheart.kohera://chat/${encodeURIComponent(link.identifier)}`;
         }
     }
 
